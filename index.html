@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+
+<head>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <main>
+        <form>
+            <label>
+                Client Id
+                <input name="id" autocomplete="on" />
+            </label>
+            <label>
+                Scope
+                <input name="scope" value="https://www.googleapis.com/auth/photoslibrary" autocomplete="on" />
+            </label>
+            <br>
+            <button>Get Access Code</button>
+
+            <br>
+            <label>
+                Access Code
+                <textarea rows="5" readonly></textarea>
+            </label>
+            <span id="countdown"></span>
+        </form>
+    </main>
+    <script>
+
+        let authWindow, tokenTime;
+        const iframe = document.querySelector("iframe");
+        const form = document.querySelector("form");
+
+        form.onsubmit = (event) => {
+            event.preventDefault();
+            const formData = new FormData(form);
+            const clientId = formData.get("id");
+            const scope = formData.get("scope");
+
+            // Redirect URI after authentication
+            const redirectUri = "https://localhost/token.html";
+
+            // Generate the authentication URL
+            const authUrl =
+                "https://accounts.google.com/o/oauth2/v2/auth?" +
+                "scope=" +
+                encodeURIComponent(scope) +
+                "&redirect_uri=" +
+                encodeURIComponent(redirectUri) +
+                "&response_type=code" +
+                "&client_id=" +
+                clientId;
+
+            authWindow = window.open(authUrl, "_blank", "width=500,height=700");
+        }
+
+        function receiveValueFromWindow(value) {
+            document.querySelector("textarea").value = value;
+            authWindow.close();
+            authWindow = null;
+            startCountdown();
+        }
+
+        function startCountdown() {
+            tokenTime = Date.now();
+            const countdownSpan = document.querySelector("#countdown");
+            const interval = setInterval(() => {
+                const absDiff = Date.now() - tokenTime;
+                const minutesDiff = 60 - (absDiff / 1000 / 60);
+                countdownSpan.textContent = minutesDiff;
+
+                if (minutesDiff < 0) {
+                    clearInterval(interval);
+                    countdownSpan.textContent = "";
+                    tokenTime = null;
+                }
+            }, 1000);
+        }
+    </script>
+</body>
