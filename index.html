@@ -6,7 +6,7 @@
 
 <body>
     <main>
-        <form>
+        <form id="code-form">
             <label>
                 Client Id
                 <input name="id" autocomplete="on" />
@@ -21,29 +21,46 @@
             <br>
             <label>
                 Access Code
-                <textarea rows="5" readonly></textarea>
+                <textarea name="code" readonly></textarea>
             </label>
+        </form>
+
+        <form id="token-form">
+
+            <label>
+                Client Secret
+                <input name="secret" autocomplete="on">
+            </label>
+
+            <button>Get Token</button>
+
+            <label>
+                Token
+                <textarea name="token" rows="4" readonly></textarea>
+            </label>
+
             <span id="countdown"></span>
         </form>
     </main>
     <script>
 
         let authWindow, tokenTime;
-        const iframe = document.querySelector("iframe");
-        const form = document.querySelector("form");
+        // Redirect URI after authentication
+        const redirectUri = "https://localhost/token.html";
 
-        form.onsubmit = (event) => {
+        const iframe = document.querySelector("iframe");
+        const codeForm = document.querySelector("#code-form");
+        const tokenForm = document.querySelector("#token-form");
+
+        codeForm.onsubmit = (event) => {
             event.preventDefault();
-            const formData = new FormData(form);
+            const formData = new FormData(codeForm);
             const clientId = formData.get("id");
             const scope = formData.get("scope");
 
-            // Redirect URI after authentication
-            const redirectUri = "https://localhost/token.html";
-
             // Generate the authentication URL
             const authUrl =
-                "https://accounts.google.com/o/oauth2/v2/auth?" +
+                "https://accounts.google.com/o/oauth2/auth?" +
                 "scope=" +
                 encodeURIComponent(scope) +
                 "&redirect_uri=" +
@@ -56,9 +73,33 @@
         }
 
         function receiveValueFromWindow(value) {
-            document.querySelector("textarea").value = value;
+            document.querySelector("[name='code']").value = value;
             authWindow.close();
             authWindow = null;
+            // startCountdown();
+        }
+
+        tokenForm.onsubmit = async (event) => {
+            event.preventDefault();
+
+            const codeFormData = new FormData(codeForm);
+            const clientId = codeFormData.get("id");
+            const code = codeFormData.get("code");
+            
+            const tokenFormData = new FormData(tokenForm);
+            const secret = tokenFormData.get("secret");
+
+            // Use the authorization code to get the access token
+            const response = await fetch("https://www.googleapis.com/oauth2/v4/token", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: `code=${code}&client_id=${clientId}&client_secret=${secret}&redirect_uri=${redirectUri}&grant_type=authorization_code`,
+            });
+
+            const json = await response.json();
+            document.querySelector("[name='token']").value = json.access_token;
             startCountdown();
         }
 
@@ -68,7 +109,7 @@
             const interval = setInterval(() => {
                 const absDiff = Date.now() - tokenTime;
                 const minutesDiff = 60 - (absDiff / 1000 / 60);
-                countdownSpan.textContent = minutesDiff;
+                countdownSpan.textContent = (Math.trunc(minutesDiff * 100)) / 100;
 
                 if (minutesDiff < 0) {
                     clearInterval(interval);
